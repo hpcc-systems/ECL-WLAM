@@ -1,0 +1,1 @@
+﻿export Strimming(STRING s, STRING After) := IF ($.StrimLength(S,After) > 0, S[LENGTH(S)-$.StrimLength(S,After)+1+LENGTH(After)..],'');

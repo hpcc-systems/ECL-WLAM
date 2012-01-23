@@ -1,0 +1,1 @@
+﻿export Home2 := 'http://www.bible-exposition.org';

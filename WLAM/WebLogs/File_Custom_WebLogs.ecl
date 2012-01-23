@@ -1,0 +1,73 @@
+﻿export File_Custom_WebLogs := MODULE
+
+IMPORT WLAM.Ut;
+IMPORT Base FROM $.File_WebLogs;
+IMPORT * FROM Std.Str;
+IMPORT Date FROM WLAM.Ut;
+
+RawRec := RECORD
+  STRING raw_txt;
+END;
+
+/* Testing Data */
+
+SHARED file_raw := DATASET([
+{'2011-06-28 05:55:45|85.115.60.180|200|22696|140925|GET /sites/default/files/css/css_dd044cee0c4747f84666f78a93d2b1fa.css HTTP/1.1|Mozilla/5.0 (X11; Linux x86_64; rv:5.0) Gecko/20100101 Firefox/5.0|gzip, deflate'},
+{'2011-06-29 05:44:45|75.115.60.180|200|22696|140925|GET /sites/default/files/css/css_dd044cee0c4747f84666f78a93d2b1fa.css HTTP/1.1|Mozilla/5.0 (X11; Linux x86_64; rv:5.0) Gecko/20100101 Firefox/5.0|'},
+{'2011-06-30 05:33:45|65.115.60.180|200|22696|140925|GET /sites/default/files/css/css_dd044cee0c4747f84666f78a93d2b1fa.css HTTP/1.1|Mozilla/5.0 (X11; Linux x86_64; rv:5.0) Gecko/20100101 Firefox/5.0|'}],RawRec);
+
+
+//shared file_raw := choosen(dataset('~.::hpcc-log',RawRec,csv(separator(''))),5000000);
+
+shared pattern year_fmt := Base.num;
+shared pattern month_fmt := Base.num;
+shared pattern day_fmt := Base.num;
+shared pattern hours_fmt := Base.num;
+shared pattern minutes_fmt := Base.num;
+shared pattern seconds_fmt := Base.num;
+shared pattern date_fmt := year_fmt '-' month_fmt '-' day_fmt ' ' hours_fmt ':' minutes_fmt ':' seconds_fmt;
+shared pattern ip_fmt := Base.Tok_ip;
+shared pattern response_code_fmt := Base.num;
+shared pattern response_size_fmt := Base.num;
+shared pattern time_taken_fmt := Base.num;
+shared pattern encoding_info_fmt := opt(Base.NotQuote);
+SHARED PATTERN HttpString := Base.HttpString_NoQuote;
+
+shared pattern sep := '|';
+
+shared pattern line := date_fmt sep ip_fmt sep response_code_fmt sep response_size_fmt sep time_taken_fmt sep HttpString sep Base.NotQuote sep encoding_info_fmt;
+
+export LayoutLog := RECORD
+  string15 ip := matchtext(ip_fmt);
+	Date.Date_t yyyymmdd := Date.FromParts((unsigned)matchtext(year_fmt),
+																				  CASE(matchtext(month_fmt),'Apr'=>4,'Aug'=>8,'Dec'=>12,'Feb'=>2,'Jan'=>1,'Jul'=>7,'Jun'=>6,'Mar'=>3,'May'=>5,'Nov'=>11,'Oct'=>10,'Sep'=>9,0),
+																			    (unsigned)matchtext(day_fmt));
+	unsigned3 hhiiss := 10000*(unsigned)matchtext(hours_fmt)+100*(unsigned)matchtext(minutes_fmt)+(unsigned)matchtext(seconds_fmt);
+	unsigned response_code := (unsigned)matchtext(response_code_fmt);
+	unsigned response_size := (unsigned)matchtext(response_size_fmt);
+	time_taken := matchtext(time_taken_fmt);
+	STRING10 command := matchtext(Base.HttpCommand);
+	STRING http_url := ut.Strim(MATCHTEXT(Base.URL),'.');
+	STRING6 http_url_type := ToLowerCase(ut.Strimming(MATCHTEXT(Base.URL),'.'));	
+	STRING http_params := MATCHTEXT(Base.Params);
+	STRING UserAgent := MATCHTEXT(Base.NotQuote);
+	STRING10 Method := MATCHTEXT(Base.HttpMethod);
+	STRING encoding_info := matchtext(encoding_info_fmt);
+end;
+
+shared p := parse(file_raw,raw_txt,line,LayoutLog,first);
+
+// Data - fairly pure - but parsed out
+EXPORT Txt := PROJECT(P,TRANSFORM($.LayoutLog,SELF := LEFT));
+
+Errs := RECORD
+  STRING T := file_raw.raw_Txt;
+  END;
+e := PARSE(file_raw,raw_Txt,Line,Errs,NOT MATCHED ONLY);
+// This shows the records dropped on the floor; should only be read from time to time for validation
+EXPORT Errors := e;
+
+// Note - in this particular example we do not have referer information - so much of the session derivation logic will NOT work
+EXPORT Logs := Base.DeriveSessions(Txt);	
+
+END;

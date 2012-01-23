@@ -1,0 +1,1 @@
+﻿export Home := 'http://www.dabhand.org';

@@ -1,0 +1,181 @@
+************************************
+*** ECL Web Log Analytics Module ***
+************************************
+
+Getting started with ECL WLAM
+-----------------------------
+
+1. Preparing the environment (assumes a Windows 7 workstation running ECL IDE):
+  	a.	Download the ECL-WLAM zip file from GitHub
+	b.	Unzip the file and copy the WLAM directory to your local ECL folder \Libraries\Documents\HPCC Systems\ECL\My Files\
+	c.	You should have two sub-folders under WLAM, UT and WebLogs. UT containing the utility libraries and WebLogs, the main WLAM functions and attributes
+
+2. Spray your Apache logs in the Apache Common Format using the following parameters (all the other parameters are left by default):
+	a.	Format: CSV
+	b.	Separator: leave it empty
+	c.	Label: “Weblogs”
+	d.	Overwrite: checked
+	e.	Compress: checked
+
+3. Spray the GeoIP CSV file downloaded from http://software77.net/geo-ip/ using the following parameters (all the other parameters are left by default):
+	a.	Format: CSV
+	b.	Label: “IpToCountry”
+	c.	Overwrite: checked
+	d.	Compress: checked
+
+4. In your ECL IDE, create this short ECL program to parse and sort your logs, add GeoIP location information and generate the results:
+
+		IMPORT * FROM WLAM.WebLogs;
+		Analysis(File_WebLogs.Logs).Stats;
+		Analysis(File_WebLogs.Logs).ContentSummary;
+
+5.Take a look at the results from within your ECL IDE by clicking on the WorkUnit (WU) and selecting the different resultsets
+
+
+The Data / What you need to do
+------------------------------
+
+WLAM is designed to parse and analyze weblogs in the Apache Common Format. The default filename for the logs to be analyzed is given towards the top of the File_WebLogs sourcefile:
+
+SHARED d := 	DATASET('~.::weblog',R,CSV(SEPARATOR('')));
+
+This can obviously be changed as desired.
+
+In order to derive country information for each IP the file csv file from: http://software77.net/geo-ip/ needs to be downloaded and sprayed as: IPToCountry. It is possible to confirm that worked by viewing the Txt definition from the IPToCountry module in WebLogs.
+
+In addition to parsing each element into a field the File_Weblogs sourcefile appends 5 useful flags:
+
+	Spider – true if this is a session from a spider
+	Session Number – The number indicates the ‘visit number’ for this particular IP.
+	Session Position – Indicates the ‘page visited’ in this session: thus 1 is the first page, 2 is the second etc.
+	Exit_Page – This was the last page in a session
+	Exit_session – This was the last session for a given IP
+
+In order to function correctly File_WebLogs requires three attributes to be filled in correctly:
+
+	PageExtensions: a set of lower case strings that define those extensions that indicate pages (as opposed to graphics etc).
+	Home: A string to identify the URL of the top of the website
+	Home2: (May be left blank) – used to indicate the URL of a ‘second’ website this is also considered ‘this’ site (useful if a website has multiple labels).
+
+The processing of the weblogs can be fairly lengthy; the results are persisted so that subsequent queries can execute quickly.
+
+
+Dicing
+------
+
+WLAM also has an analysis module that computes a multitude of common statistics upon whatever data set is passed in. Thus:
+
+	IMPORT WebLogs;
+	d := WebLogs.File_WebLogs.Logs;
+	WebLogs.Analysis(D).Stats;
+
+produces the default statistics for the whole log set. The statistics include:
+
+·	Hits – Number of hits to the website (includes graphics fetches)
+·	Visits – Number of visits to the website
+·	Hard_Bounces – Number of visitors that have visited the website exactly once and viewed exactly one page
+·	Pings – Number of occasions on which a visitor viewed exactly one page during a session – but this was neither their first or last visit
+·	Visitors – Total number of distinct visitors
+·	NewVisitors – Number of visitors appearing for the first time
+·	PagesPerVisit – Average number of pages per visit
+·	DATASET(ip_rec) TopIps; - Top visiting IPs
+·	NumURLs – Number of different URLs visited
+·	TopURLs – Most popular URLs
+·	NumDays – Number of days in the logs
+·	TopDays – Busiest days
+·	InternalReferences – Number of pages that produces a reference to another page
+·	ExternalReferences – Number of pages referring in from outside of the site
+·	TopRefers_Internal – Internal pages that produce most references
+·	TopRefers_External – External pages that produce most references
+·	Response_Codes – Most common response codes
+·	Session_Count – Distribution of number of times a visitor tends to visit
+·	MaxSessions – Number of visits from loyalist visitor
+·	Session_Positions – Distribution of number of pages viewed
+·	MaxSessionPositions – Largest number of pages viewed in one session
+·	TopTypes – Most commonly fetched file extensions.
+
+
+Source Summary
+--------------
+
+In addition to the global statistics done upon all the data handed into the analysis module it is possible to get summary information for each individual page. This comes from the ContentSummary attribute. For each page it provides:
+
+·	Number of times the page was viewed
+·	Number of unique visitors to view the page
+·	Number of times it was an entry page
+·	Number of times it was an exit page
+·	Number of times the page was a bounce (entry and exit)
+·	The earliest date upon which the page was viewed
+·	The latest date upon which the page was viewed
+
+	IMPORT WebLogs;
+	d := WebLogs.File_WebLogs.Logs;
+	TOPN(WebLogs.Analysis(D).ContentSummary,100,-UniqueViews)
+
+
+Slicing
+-------
+
+The analysis module operates upon all of the data it has been handed; therefore if you want analytics upon a SLICE of the data – you hand a slice to the analytic module using the normal ECL filtering conventions. Thus – to observe all the spider activity:
+
+	IMPORT WebLogs;
+	d := WebLogs.File_WebLogs.Logs;
+	WebLogs.Analysis(D(spider)).Stats;
+
+To observe all the activity of first time visitors:
+
+	IMPORT WebLogs;
+	d := WebLogs.File_WebLogs.Logs;
+	WebLogs.Analysis(D(session_number=1)).Stats;
+
+To observe all the activity of longer term visitors that have not visited since Christmas:
+
+	IMPORT WebLogs;
+	d := WebLogs.File_WebLogs.Logs;
+	Dint := D(session_number>1,exit_session,YYYYMMDD<20101225);
+	WebLogs.Analysis(Dint).Stats;
+	Dint; // actually eyeball some of the data
+
+The date of the data is stored in a field YYYYMMDD in the Date_T format from the standard Date module. Therefore it is possible to use the Date_T conversion to Days Since (and a small amount of arithmetic) to perform slices such as “The last 30 days of data”.
+
+
+Trending
+--------
+
+Whilst the slicing allows data to be viewed for any given time period sometimes you will wish to view how data changes over time. To this end the trending module allows data to be summarized by day. For each day you can obtain:
+
+·	Hits – total number of hits
+·	PageViews – total number of page views
+·	Pages Viewed – total number of pages viewed (ie deduping when the same individual views a page twice in the same session)
+·	Visits – Number of different sessions on a given day
+·	Visitors – Number of different visitors on a given day
+
+And the ECL program to show this is:
+
+	IMPORT WebLogs;
+	d := WebLogs.File_WebLogs.Logs;
+	TOPN(WebLogs.Trending(D).DailySummaries,100,-visitors);
+
+In addition to daily summaries wlam is capable of computing moving averages; once plotted these can give trend-lines. To get the summaries with 30 and 90 days moving averages appended use DailyAverages rather than summaries. Thus:
+
+	IMPORT WebLogs;
+	d := WebLogs.File_WebLogs.Logs;
+	WebLogs.Trending(D).DailyAverages;
+
+
+Custom Log Formats
+------------------
+
+File_Weblogs is built to process the Apache Combined Log Format. However it is possible to use the WLAM module on any log format; provided the log file has first been massaged into the correct format.
+
+LayoutLog defines the format that each web logfile should eventually end up in. Any fields not available in the source data should not be defined; they will be filled in automatically by the system.
+
+File_Custom_Weblogs provides an example of processing a rather different log format into the weblog standard. It will be noted that File_WebLog exports a number of patterns that will help in processing log files which are ‘quite a bit like’ Apache logs. Ultimately however it doesn’t matter HOW you get the data into the format; as long as you do.
+
+File_WebLogs also provides DeriveSessions to allow session info to be computed; note however that MOST of the function relies upon the SelfReference flag having been filled in correctly
+
+
+Changelog
+---------
+
+01-23-2012	Initial commit
