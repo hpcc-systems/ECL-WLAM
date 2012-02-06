@@ -1,9 +1,21 @@
-﻿export File_Custom_WebLogs := MODULE
+export File_Custom_WebLogs := MODULE
 
 IMPORT WLAM.Ut;
-IMPORT Base FROM $.File_WebLogs;
+IMPORT WLAM.WebLogs;
 IMPORT * FROM Std.Str;
 IMPORT Date FROM WLAM.Ut;
+
+EXPORT PATTERN Num := PATTERN('[0-9]')+;
+EXPORT PATTERN Tok_IP := Num '.' Num '.' Num '.' Num; 
+SHARED PATTERN ToBlank := PATTERN('[^ ]')+;
+EXPORT PATTERN HttpCommand := ToBlank;
+EXPORT PATTERN NotQuote := PATTERN('[^"]')*;
+EXPORT PATTERN Params := OPT('?' NotQuote);
+EXPORT PATTERN HttpMethod := 'HTTP/' Num '.' Num;
+EXPORT PATTERN ws := ' '+;
+EXPORT PATTERN URL := PATTERN('[^"\\?]')*;
+EXPORT PATTERN HttpString_NoQuote := HttpCommand ws URL Params HttpMethod;
+EXPORT PATTERN HttpString := '"' HttpString_NoQuote OPT(ws) '"';
 
 RawRec := RECORD
   STRING raw_txt;
@@ -19,23 +31,22 @@ SHARED file_raw := DATASET([
 
 //shared file_raw := choosen(dataset('~.::hpcc-log',RawRec,csv(separator(''))),5000000);
 
-shared pattern year_fmt := Base.num;
-shared pattern month_fmt := Base.num;
-shared pattern day_fmt := Base.num;
-shared pattern hours_fmt := Base.num;
-shared pattern minutes_fmt := Base.num;
-shared pattern seconds_fmt := Base.num;
+shared pattern year_fmt := Num;
+shared pattern month_fmt := Num;
+shared pattern day_fmt := Num;
+shared pattern hours_fmt := Num;
+shared pattern minutes_fmt := Num;
+shared pattern seconds_fmt := Num;
 shared pattern date_fmt := year_fmt '-' month_fmt '-' day_fmt ' ' hours_fmt ':' minutes_fmt ':' seconds_fmt;
-shared pattern ip_fmt := Base.Tok_ip;
-shared pattern response_code_fmt := Base.num;
-shared pattern response_size_fmt := Base.num;
-shared pattern time_taken_fmt := Base.num;
-shared pattern encoding_info_fmt := opt(Base.NotQuote);
-SHARED PATTERN HttpString := Base.HttpString_NoQuote;
+shared pattern ip_fmt := Tok_IP;
+shared pattern response_code_fmt := Num;
+shared pattern response_size_fmt := Num;
+shared pattern time_taken_fmt := Num;
+shared pattern encoding_info_fmt :=NotQuote;
 
 shared pattern sep := '|';
 
-shared pattern line := date_fmt sep ip_fmt sep response_code_fmt sep response_size_fmt sep time_taken_fmt sep HttpString sep Base.NotQuote sep encoding_info_fmt;
+shared pattern line := date_fmt sep ip_fmt sep response_code_fmt sep response_size_fmt sep time_taken_fmt sep HttpString sep NotQuote sep encoding_info_fmt;
 
 export LayoutLog := RECORD
   string15 ip := matchtext(ip_fmt);
@@ -46,12 +57,12 @@ export LayoutLog := RECORD
 	unsigned response_code := (unsigned)matchtext(response_code_fmt);
 	unsigned response_size := (unsigned)matchtext(response_size_fmt);
 	time_taken := matchtext(time_taken_fmt);
-	STRING10 command := matchtext(Base.HttpCommand);
-	STRING http_url := ut.Strim(MATCHTEXT(Base.URL),'.');
-	STRING6 http_url_type := ToLowerCase(ut.Strimming(MATCHTEXT(Base.URL),'.'));	
-	STRING http_params := MATCHTEXT(Base.Params);
-	STRING UserAgent := MATCHTEXT(Base.NotQuote);
-	STRING10 Method := MATCHTEXT(Base.HttpMethod);
+	STRING10 command := matchtext(HttpCommand);
+	STRING http_url := ut.Strim(MATCHTEXT(URL),'.');
+	STRING6 http_url_type := ToLowerCase(ut.Strimming(MATCHTEXT(URL),'.'));	
+	STRING http_params := MATCHTEXT(Params);
+	STRING UserAgent := MATCHTEXT(NotQuote);
+	STRING10 Method := MATCHTEXT(HttpMethod);
 	STRING encoding_info := matchtext(encoding_info_fmt);
 end;
 
@@ -63,11 +74,12 @@ EXPORT Txt := PROJECT(P,TRANSFORM($.LayoutLog,SELF := LEFT));
 Errs := RECORD
   STRING T := file_raw.raw_Txt;
   END;
+
 e := PARSE(file_raw,raw_Txt,Line,Errs,NOT MATCHED ONLY);
 // This shows the records dropped on the floor; should only be read from time to time for validation
 EXPORT Errors := e;
 
 // Note - in this particular example we do not have referer information - so much of the session derivation logic will NOT work
-EXPORT Logs := Base.DeriveSessions(Txt);	
+EXPORT Logs := WebLogs.File_WebLogs.DeriveSessions(Txt);	
 
 END;
