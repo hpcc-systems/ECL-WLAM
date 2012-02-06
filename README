@@ -31,6 +31,8 @@ Getting started with ECL WLAM
 
 5.Take a look at the results from within your ECL IDE by clicking on the WorkUnit (WU) and selecting the different resultsets
 
+6. (Optional) Download the ECL Visualization Library from: https://github.com/hpcc-systems/ecl-samples/tree/master/visualizations/google_charts and unpack it so that the "files" directory is at the level of "UT" and "WebLogs". See the simple pie chart example within example1.ecl
+
 
 The Data / What you need to do
 ------------------------------

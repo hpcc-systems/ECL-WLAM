@@ -93,27 +93,27 @@ R := RECORD
   END;
 	
 EXPORT Stats := DATASET([{COUNT(upon), // its
-													COUNT(Sessions),  // visits
-													COUNT(Sessions(pages=1,session_number=1,Final)),
-													COUNT(Sessions(pages=1,session_number>1,~Final)), // Define a ping as a one-page visit after an initial visit; but where people come back
-													UNIQUE_IP,
-													COUNT(Sessions(session_number=1)),  // number of new visitors
-													AVE(Sessions,pages),
-													TOP100_IP,
-													UNIQUE_http_url,
-													TOP100_http_url,
-													UNIQUE_yyyymmdd,
-													TOP100_yyyymmdd,
-													UNIQUE_Country,
-													TOP100_Country,
-													UNIQUE_http_refer_internal,
-													UNIQUE_http_refer_external,
-													TOP100_http_refer_internal,
-													TOP100_http_refer_external,
-													Top100_response_code,
-													Top100_session_number,Max_session_number,
-													Top100_session_position,Max_session_position,
-													TOP100_http_url_type}],R);
+						COUNT(Sessions),  // visits
+						COUNT(Sessions(pages=1,session_number=1,Final)),
+						COUNT(Sessions(pages=1,session_number>1,~Final)), // Define a ping as a one-page visit after an initial visit; but where people come back
+						UNIQUE_IP,
+						COUNT(Sessions(session_number=1)),  // number of new visitors
+						AVE(Sessions,pages),
+						TOP100_IP,
+						UNIQUE_http_url,
+						TOP100_http_url,
+						UNIQUE_yyyymmdd,
+						TOP100_yyyymmdd,
+						UNIQUE_Country,
+						TOP100_Country,
+						UNIQUE_http_refer_internal,
+						UNIQUE_http_refer_external,
+						TOP100_http_refer_internal,
+						TOP100_http_refer_external,
+						Top100_response_code,
+						Top100_session_number,Max_session_number,
+						Top100_session_position,Max_session_position,
+						TOP100_http_url_type}],R);
 
 /*
   Construct a summary by page of certain key facts
