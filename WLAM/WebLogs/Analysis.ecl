@@ -1,4 +1,4 @@
-﻿IMPORT $;
+IMPORT $;
 IMPORT Date FROM WLAM.Ut;
 EXPORT Analysis(DATASET($.LayoutLog) upon) := MODULE
 
@@ -160,4 +160,4 @@ T3 := TABLE(T2,R3,http_url,MERGE);
 
 EXPORT ContentSummary := T3;
 
-  END;
+END;

@@ -1,4 +1,4 @@
-﻿export File_Custom_WebLogs := MODULE
+export File_Custom_WebLogs := MODULE
 
 IMPORT WLAM.Ut;
 IMPORT WLAM.WebLogs;
@@ -74,6 +74,7 @@ EXPORT Txt := PROJECT(P,TRANSFORM($.LayoutLog,SELF := LEFT));
 Errs := RECORD
   STRING T := file_raw.raw_Txt;
   END;
+
 e := PARSE(file_raw,raw_Txt,Line,Errs,NOT MATCHED ONLY);
 // This shows the records dropped on the floor; should only be read from time to time for validation
 EXPORT Errors := e;
